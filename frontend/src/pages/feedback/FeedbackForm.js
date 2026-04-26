@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../api/axios";
 import { FEEDBACK_RATINGS } from "../../utils/constants";
 import Toast from "../../components/ui/Toast";
 
@@ -12,6 +13,7 @@ function FeedbackForm() {
   });
 
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -21,32 +23,37 @@ function FeedbackForm() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const newFeedback = {
-      id: `FDB${Date.now()}`,
-      rating: formData.rating,
-      feedback: formData.feedback,
-      submittedAt: new Date().toLocaleString(),
-    };
+    try {
+      setLoading(true);
 
-    const existingFeedback =
-      JSON.parse(localStorage.getItem("feedbacks")) || [];
+      await api.post("/feedback", {
+        rating: formData.rating,
+        feedback: formData.feedback,
+      });
 
-    existingFeedback.push(newFeedback);
+      setToast({
+        message: "Feedback submitted successfully!",
+        type: "success",
+      });
 
-    localStorage.setItem("feedbacks", JSON.stringify(existingFeedback));
+      setFormData({
+        rating: "",
+        feedback: "",
+      });
 
-    setToast({ message: "Feedback submitted successfully!", type: "success" });
-    console.log("Saved Feedback:", newFeedback);
-
-    setFormData({
-      rating: "",
-      feedback: "",
-    });
-
-    setTimeout(() => navigate("/dashboard"), 2000);
+      setTimeout(() => navigate("/dashboard"), 1500);
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      setToast({
+        message: "Failed to submit feedback",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
@@ -56,7 +63,6 @@ function FeedbackForm() {
     });
   };
 
-  // Star rating display
   const renderStars = () => {
     return (
       <div className="flex gap-2 mt-3">
@@ -84,7 +90,6 @@ function FeedbackForm() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Toast */}
       {toast && (
         <Toast
           message={toast.message}
@@ -93,7 +98,6 @@ function FeedbackForm() {
         />
       )}
 
-      {/* Page Header */}
       <div className="mb-6 animate-fade-in">
         <h1 className="text-2xl font-bold text-gray-900">Submit Feedback</h1>
         <p className="text-gray-500 mt-1">
@@ -101,15 +105,15 @@ function FeedbackForm() {
         </p>
       </div>
 
-      {/* Form Card */}
       <div className="card">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Rating */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               How would you rate the service? <span className="text-red-500">*</span>
             </label>
+
             {renderStars()}
+
             {formData.rating && (
               <p className="text-xs text-gray-400 mt-2">
                 You selected:{" "}
@@ -119,7 +123,7 @@ function FeedbackForm() {
                 </span>
               </p>
             )}
-            {/* Hidden select for form validation */}
+
             <select
               name="rating"
               className="hidden"
@@ -136,11 +140,11 @@ function FeedbackForm() {
             </select>
           </div>
 
-          {/* Feedback Text */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Your Feedback <span className="text-red-500">*</span>
             </label>
+
             <textarea
               name="feedback"
               className="textarea-field"
@@ -148,25 +152,32 @@ function FeedbackForm() {
               value={formData.feedback}
               onChange={handleChange}
               required
+              maxLength={500}
               rows={5}
             />
+
             <p className="text-xs text-gray-400 mt-1.5">
               {formData.feedback.length} / 500 characters
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-2">
-            <button type="submit" className="btn-primary flex-1 sm:flex-none">
+            <button
+              type="submit"
+              className="btn-primary flex-1 sm:flex-none"
+              disabled={loading}
+            >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
-              Submit Feedback
+              {loading ? "Submitting..." : "Submit Feedback"}
             </button>
+
             <button
               type="button"
               className="btn-secondary"
               onClick={handleReset}
+              disabled={loading}
             >
               Reset
             </button>
